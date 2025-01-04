@@ -54,7 +54,7 @@ connectDB();
 
 // Initialize Express app
 const app = express();
-const allowedOrigins = ['http://localhost:5173', 'https://yourfrontenddomain.com', 'http://yourserverdomain.com'];
+const allowedOrigins = ['http://localhost:5173', 'https://rafi-a11.netlify.app/', 'http://yourserverdomain.com'];
 const corsOptions = {
   origin: (origin, callback) => {
     if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
