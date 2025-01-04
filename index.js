@@ -54,19 +54,40 @@ connectDB();
 
 // Initialize Express app
 const app = express();
-const allowedOrigins = ['http://localhost:5173', 'https://rafi-a11.netlify.app/', 'http://yourserverdomain.com'];
+// const allowedOrigins = ['http://localhost:5173', 'https://rafi-a11.netlify.app/', 'http://yourserverdomain.com'];
+// const corsOptions = {
+//   origin: (origin, callback) => {
+//     if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+//       callback(null, true);
+//     } else {
+//       callback(new Error('Not allowed by CORS'));
+//     }
+//   },
+//   credentials: true,
+//   methods: ['GET', 'POST', 'PUT', 'DELETE'],
+//   allowedHeaders: ['Content-Type', 'Authorization'],
+// };
+
+
+const allowedOrigins = ['http://localhost:5173', 'https://rafi-a11.netlify.app', 'http://yourserverdomain.com'];
+
 const corsOptions = {
   origin: (origin, callback) => {
-    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+    console.log('Request Origin:', origin); // Debugging
+    if (allowedOrigins.includes(origin) || !origin) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      callback(new Error(`Not allowed by CORS: ${origin}`));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 };
+ 
+
+
+
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser(process.env.COOKIE_SECRET));
