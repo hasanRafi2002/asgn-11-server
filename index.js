@@ -69,7 +69,17 @@ const app = express();
 // };
 
 
-const allowedOrigins = ['http://localhost:5173', 'https://rafi-a11.netlify.app', 'http://yourserverdomain.com'];
+// const allowedOrigins = ['http://localhost:5173', 'https://rafi-a11.netlify.app', 'http://yourserverdomain.com'];
+
+
+
+const allowedOrigins = [
+  'http://localhost:5173', 
+  'https://rafi-a11.netlify.app', 
+  'http://yourserverdomain.com',
+  'https://asgn-11-server.vercel.app'  // Add your Vercel domain
+];
+
 
 const corsOptions = {
   origin: (origin, callback) => {
@@ -91,6 +101,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use('/api/foods', foodRoutes);
+app.use(authMiddleware);
 app.use(cookieParser(process.env.COOKIE_SECRET));
 
 // Schemas and Models
@@ -146,28 +157,6 @@ const User = mongoose.model('User', userSchema);
 const Food = mongoose.model('Food', foodSchema);
 const Purchase = mongoose.model('Purchase', purchaseSchema);
 
-
-
-
-// // Middleware
-// const authMiddleware = async (req, res, next) => {
-//   const token = req.cookies?.token;
-//   console.log('Token from cookies:', token); // Log the token to verify it is being retrieved
-//   if (!token) return res.status(401).json({ message: 'Authorization denied' });
-
-//   try {
-//     const decodedToken = await admin.auth().verifyIdToken(token);
-//     req.user = {
-//       id: decodedToken.user_id,
-//       name: decodedToken.name || 'Unknown',
-//       email: decodedToken.email,
-//     };
-//     next();
-//   } catch (err) {
-//     console.error('Token verification error:', err);
-//     return res.status(403).json({ message: 'Invalid token' });
-//   }
-// };
 
 
 
