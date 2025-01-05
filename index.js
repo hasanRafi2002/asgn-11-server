@@ -1,7 +1,3 @@
-
-
-
-
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
@@ -54,24 +50,6 @@ connectDB();
 
 // Initialize Express app
 const app = express();
-// const allowedOrigins = ['http://localhost:5173', 'https://rafi-a11.netlify.app/', 'http://yourserverdomain.com'];
-// const corsOptions = {
-//   origin: (origin, callback) => {
-//     if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
-//       callback(null, true);
-//     } else {
-//       callback(new Error('Not allowed by CORS'));
-//     }
-//   },
-//   credentials: true,
-//   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-//   allowedHeaders: ['Content-Type', 'Authorization'],
-// };
-
-
-// const allowedOrigins = ['http://localhost:5173', 'https://rafi-a11.netlify.app', 'http://yourserverdomain.com'];
-
-
 
 const allowedOrigins = [
   'http://localhost:5173', 
@@ -79,7 +57,6 @@ const allowedOrigins = [
   'http://yourserverdomain.com',
   'https://asgn-11-server.vercel.app'  // Add your Vercel domain
 ];
-
 
 const corsOptions = {
   origin: (origin, callback) => {
@@ -94,14 +71,37 @@ const corsOptions = {
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 };
- 
 
-
-app.use('/api/foods', foodRoutes);
-app.use(authMiddleware); 
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser(process.env.COOKIE_SECRET));
+
+// Auth Middleware
+const authMiddleware = async (req, res, next) => {
+  const token = req.cookies?.token || req.headers.authorization?.split(' ')[1];
+  console.log('Token from client:', token);
+
+  if (!token) {
+    return res.status(401).json({ message: 'Authorization denied. No token provided.' });
+  }
+
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    req.user = {
+      id: decodedToken.user_id,
+      name: decodedToken.name || 'Unknown',
+      email: decodedToken.email,
+    };
+    console.log('Authenticated user:', req.user); // Debugging: log authenticated user info
+    next();
+  } catch (err) {
+    console.error('Token verification failed:', err.code || err.message);
+    if (err.code === 'auth/id-token-expired') {
+      return res.status(401).json({ message: 'Token expired. Please refresh your token.' });
+    }
+    return res.status(403).json({ message: 'Invalid token. Authentication failed.' });
+  }
+};
 
 // Schemas and Models
 const userSchema = new mongoose.Schema({
@@ -128,16 +128,10 @@ const foodSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
-
-
-
-
-
-
 const purchaseSchema = new mongoose.Schema({
   foodId: { type: mongoose.Schema.Types.ObjectId, ref: 'Food', required: true },
   foodName: { type: String, required: true },
-foodImage: { type: String, required: true },
+  foodImage: { type: String, required: true },
   price: { type: Number, required: true },
   quantity: { type: Number, required: true },
   buyerName: { type: String, required: true },
@@ -147,116 +141,15 @@ foodImage: { type: String, required: true },
   buyingDate: { type: Date, default: Date.now },
 }, { timestamps: true });
 
-
-
-
-
-
 const User = mongoose.model('User', userSchema);
 const Food = mongoose.model('Food', foodSchema);
 const Purchase = mongoose.model('Purchase', purchaseSchema);
 
-
-
-
-
-const authMiddleware = async (req, res, next) => {
-    const token = req.cookies?.token || req.headers.authorization?.split(' ')[1];
-    console.log('Token from client:', token);
-  
-    if (!token) {
-      return res.status(401).json({ message: 'Authorization denied. No token provided.' });
-    }
-  
-    try {
-      const decodedToken = await admin.auth().verifyIdToken(token);
-      req.user = {
-        id: decodedToken.user_id,
-        name: decodedToken.name || 'Unknown',
-        email: decodedToken.email,
-      };
-      console.log('Authenticated user:', req.user); // Debugging: log authenticated user info
-      next();
-    } catch (err) {
-      console.error('Token verification failed:', err.code || err.message);
-      if (err.code === 'auth/id-token-expired') {
-        return res.status(401).json({ message: 'Token expired. Please refresh your token.' });
-      }
-      return res.status(403).json({ message: 'Invalid token. Authentication failed.' });
-    }
-  };
-  
-  module.exports = authMiddleware;
-  
-
-
-
-
-// ///gallery 
-
-const galleryPhotoSchema = new mongoose.Schema({
-    image: { type: String, required: true },
-    user: { type: String, required: true },
-    feedback: { type: String, required: true },
-  }, { timestamps: true });
-  
-  const GalleryPhoto = mongoose.model('GalleryPhoto', galleryPhotoSchema);
-
-
-
-// Gallery routes
-app.post('/api/gallery', authMiddleware, async (req, res) => {
-    const { image, user, feedback } = req.body;
-    if (!image || !user || !feedback) {
-      return res.status(400).json({ message: 'Image, user, and feedback are required' });
-    }
-  
-    try {
-      const newPhoto = new GalleryPhoto({ image, user, feedback });
-      await newPhoto.save();
-      res.status(201).json(newPhoto);
-    } catch (err) {
-      console.error('Error posting photo:', err);
-      res.status(500).json({ message: 'Server error' });
-    }
-  });
-  
-  app.get('/api/gallery', async (req, res) => {
-    try {
-      const photos = await GalleryPhoto.find();
-      res.status(200).json(photos);
-    } catch (err) {
-      console.error('Error fetching photos:', err);
-      res.status(500).json({ message: 'Server error' });
-    }
-  });
-  
-  app.delete('/api/gallery/:id', authMiddleware, async (req, res) => {
-    try {
-      const deletedPhoto = await GalleryPhoto.findByIdAndDelete(req.params.id);
-      if (!deletedPhoto) return res.status(404).json({ message: 'Photo not found' });
-      res.status(200).json({ message: 'Photo deleted' });
-    } catch (err) {
-      console.error('Error deleting photo:', err);
-      res.status(500).json({ message: 'Server error' });
-    }
-  });
-  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+const GalleryPhoto = mongoose.model('GalleryPhoto', new mongoose.Schema({
+  image: { type: String, required: true },
+  user: { type: String, required: true },
+  feedback: { type: String, required: true },
+}, { timestamps: true }));
 
 // Validation Schemas
 const registerSchema = Joi.object({
@@ -284,11 +177,6 @@ const createFoodSchema = Joi.object({
     photoURL: Joi.string().uri().optional(),
   }).required(),
 });
-
-
-
-
-
 
 // Auth routes
 app.post('/api/auth/register', async (req, res) => {
@@ -365,14 +253,6 @@ app.get('/api/auth/profile', authMiddleware, async (req, res) => {
   }
 });
 
-
-
-
-
-
-
-
-
 // Food routes
 app.post('/api/foods', authMiddleware, async (req, res) => {
   const { error } = createFoodSchema.validate(req.body);
@@ -391,9 +271,6 @@ app.post('/api/foods', authMiddleware, async (req, res) => {
   }
 });
 
-
-
-
 app.get('/api/foods', async (req, res) => {
   try {
     const foods = await Food.find();
@@ -403,8 +280,6 @@ app.get('/api/foods', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-
-
 
 app.get('/api/foods/:id', async (req, res) => {
   try {
@@ -419,10 +294,7 @@ app.get('/api/foods/:id', async (req, res) => {
   }
 });
 
-
-
-
-app.put('/api/foods/:id',authMiddleware, async (req, res) => {
+app.put('/api/foods/:id', authMiddleware, async (req, res) => {
   const { error } = createFoodSchema.validate(req.body);
   if (error) return res.status(400).json({ message: error.details[0].message });
 
@@ -436,12 +308,7 @@ app.put('/api/foods/:id',authMiddleware, async (req, res) => {
   }
 });
 
-
-
-
-
-
-app.delete('/api/foods/:id',authMiddleware, async (req, res) => {
+app.delete('/api/foods/:id', authMiddleware, async (req, res) => {
   try {
     const deletedFood = await Food.findByIdAndDelete(req.params.id);
     if (!deletedFood) return res.status(404).json({ message: 'Food not found' });
@@ -452,73 +319,89 @@ app.delete('/api/foods/:id',authMiddleware, async (req, res) => {
   }
 });
 
-
-
-
-
-
+// Purchase routes
 app.post('/api/purchases', authMiddleware, async (req, res) => {
-    const { foodId, foodName, foodImage, price, quantity, buyerName, buyerEmail, buyerPhotoURL, location } = req.body;
-  
-    try {
-      const newPurchase = new Purchase({ foodId, foodName, foodImage, price, quantity, buyerName, buyerEmail, buyerPhotoURL, location });
-      await newPurchase.save();
-  
-      // Update the purchase count and quantity of the food item
-      await Food.findByIdAndUpdate(foodId, { $inc: { purchaseCount: quantity, quantity: -quantity } });
-  
-      res.status(201).json({ message: 'Purchase successful', purchase: newPurchase });
-    } catch (err) {
-      console.error('Error processing purchase:', err);
-      res.status(500).json({ message: 'Server error' });
-    }
-  });
+  const { foodId, foodName, foodImage, price, quantity, buyerName, buyerEmail, buyerPhotoURL, location } = req.body;
 
+  try {
+    const newPurchase = new Purchase({ foodId, foodName, foodImage, price, quantity, buyerName, buyerEmail, buyerPhotoURL, location });
+    await newPurchase.save();
 
+    // Update the purchase count and quantity of the food item
+    await Food.findByIdAndUpdate(foodId, { $inc: { purchaseCount: quantity, quantity: -quantity } });
 
-
-
+    res.status(201).json({ message: 'Purchase successful', purchase: newPurchase });
+  } catch (err) {
+    console.error('Error processing purchase:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
 app.get('/api/purchases', authMiddleware, async (req, res) => {
-    const email = req.user.email; // Use email from the authenticated user
-  
-    try {
-      const purchases = await Purchase.find({ buyerEmail: email });
-      res.status(200).json(purchases);
-    } catch (err) {
-      console.error('Error fetching purchases:', err);
-      res.status(500).json({ message: 'Server error' });
-    }
-  });
+  const email = req.user.email; // Use email from the authenticated user
 
+  try {
+    const purchases = await Purchase.find({ buyerEmail: email });
+    res.status(200).json(purchases);
+  } catch (err) {
+    console.error('Error fetching purchases:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
-
-
-
-
-// Update the delete purchase route
 app.delete('/api/purchases/:id', authMiddleware, async (req, res) => {
-    try {
-      const purchase = await Purchase.findById(req.params.id);
-      if (!purchase) return res.status(404).json({ message: 'Purchase not found' });
-  
-      // Increment the quantity of the food item
-      await Food.findByIdAndUpdate(purchase.foodId, { $inc: { quantity: purchase.quantity } });
-  
-      await Purchase.findByIdAndDelete(req.params.id);
-      res.status(200).json({ message: 'Purchase deleted and food quantity updated' });
-    } catch (err) {
-      console.error('Error deleting purchase:', err);
-      res.status(500).json({ message: 'Server error' });
-    }
-  });
+  try {
+    const purchase = await Purchase.findById(req.params.id);
+    if (!purchase) return res.status(404).json({ message: 'Purchase not found' });
 
+    // Increment the quantity of the food item
+    await Food.findByIdAndUpdate(purchase.foodId, { $inc: { quantity: purchase.quantity } });
 
+    await Purchase.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: 'Purchase deleted and food quantity updated' });
+  } catch (err) {
+    console.error('Error deleting purchase:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
+// Gallery routes
+app.post('/api/gallery', authMiddleware, async (req, res) => {
+  const { image, user, feedback } = req.body;
+  if (!image || !user || !feedback) {
+    return res.status(400).json({ message: 'Image, user, and feedback are required' });
+  }
 
+  try {
+    const newPhoto = new GalleryPhoto({ image, user, feedback });
+    await newPhoto.save();
+    res.status(201).json(newPhoto);
+  } catch (err) {
+    console.error('Error posting photo:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
+app.get('/api/gallery', async (req, res) => {
+  try {
+    const photos = await GalleryPhoto.find();
+    res.status(200).json(photos);
+  } catch (err) {
+    console.error('Error fetching photos:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
-
+app.delete('/api/gallery/:id', authMiddleware, async (req, res) => {
+  try {
+    const deletedPhoto = await GalleryPhoto.findByIdAndDelete(req.params.id);
+    if (!deletedPhoto) return res.status(404).json({ message: 'Photo not found' });
+    res.status(200).json({ message: 'Photo deleted' });
+  } catch (err) {
+    console.error('Error deleting photo:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
 // Global error handling
 app.use((err, req, res, next) => {
@@ -541,14 +424,3 @@ const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
-
-
-
-
-
-
-
-
-
-
