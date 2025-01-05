@@ -97,11 +97,10 @@ const corsOptions = {
  
 
 
-
+app.use('/api/foods', foodRoutes);
+app.use(authMiddleware); 
 app.use(cors(corsOptions));
 app.use(express.json());
-app.use('/api/foods', foodRoutes);
-app.use(authMiddleware);
 app.use(cookieParser(process.env.COOKIE_SECRET));
 
 // Schemas and Models
